@@ -1,0 +1,15 @@
+[Unit]
+Description=WAL-G PostgreSQL full backup
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User={{ wal_g_backup_user }}
+Group={{ wal_g_backup_group }}
+ExecStart={{ wal_g_backup_command }}
+{% if wal_g_enable_retention | bool %}
+ExecStartPost={{ wal_g_retention_command }}
+{% endif %}
+StandardOutput=append:{{ wal_g_backup_log_path }}
+StandardError=append:{{ wal_g_backup_log_path }}

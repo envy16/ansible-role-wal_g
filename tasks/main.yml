@@ -1,0 +1,117 @@
+---
+- name: Install WAL-G dependencies
+  ansible.builtin.package:
+    name: "{{ wal_g_packages }}"
+    state: present
+  when: wal_g_packages | length > 0
+
+- name: Download WAL-G binary
+  ansible.builtin.get_url:
+    url: "{{ wal_g_download_url }}"
+    dest: "{{ wal_g_binary_path }}"
+    owner: "{{ wal_g_owner }}"
+    group: "{{ wal_g_group }}"
+    mode: "0755"
+    url_username: "{{ wal_g_download_username if wal_g_download_username is defined else omit }}"
+    url_password: "{{ wal_g_download_password if wal_g_download_password is defined else omit }}"
+    force_basic_auth: "{{ wal_g_download_force_basic_auth if wal_g_download_force_basic_auth is defined else omit }}"
+
+- name: Create WAL-G config directory
+  ansible.builtin.file:
+    path: "{{ wal_g_config_dir }}"
+    state: directory
+    owner: "{{ wal_g_postgres_user }}"
+    group: "{{ wal_g_postgres_group }}"
+    mode: "0700"
+
+- name: Write WAL-G JSON config
+  ansible.builtin.copy:
+    dest: "{{ wal_g_config_path }}"
+    content: "{{ wal_g_config | to_nice_json }}\n"
+    owner: "{{ wal_g_postgres_user }}"
+    group: "{{ wal_g_postgres_group }}"
+    mode: "0600"
+  no_log: true
+
+- name: Create WAL-G log directory
+  ansible.builtin.file:
+    path: "{{ wal_g_log_dir }}"
+    state: directory
+    owner: "{{ wal_g_postgres_user }}"
+    group: "{{ wal_g_postgres_group }}"
+    mode: "0700"
+
+- name: Create WAL-G log files
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: touch
+    owner: "{{ wal_g_postgres_user }}"
+    group: "{{ wal_g_postgres_group }}"
+    mode: "0600"
+    modification_time: preserve
+    access_time: preserve
+  loop:
+    - "{{ wal_g_archive_log_path }}"
+    - "{{ wal_g_restore_log_path }}"
+    - "{{ wal_g_backup_log_path }}"
+
+- name: Configure PostgreSQL archive settings
+  ansible.builtin.blockinfile:
+    path: "{{ wal_g_postgresql_conf_path }}"
+    marker: "# {mark} ANSIBLE MANAGED WAL-G ARCHIVE"
+    block: |
+      archive_mode = {{ wal_g_archive_mode }}
+      archive_command = '{{ wal_g_archive_command }}'
+      restore_command = '{{ wal_g_restore_command }}'
+  notify: Restart postgresql
+  when: wal_g_configure_postgresql_archive | bool
+
+- name: Configure additional PostgreSQL parameters
+  ansible.builtin.blockinfile:
+    path: "{{ wal_g_postgresql_conf_path }}"
+    marker: "# {mark} ANSIBLE MANAGED WAL-G POSTGRESQL PARAMETERS"
+    block: |
+      {% for parameter in wal_g_postgresql_parameters | dict2items %}
+      {{ parameter.key }} = {{ parameter.value }}
+      {% endfor %}
+  notify: Restart postgresql
+  when: wal_g_postgresql_parameters | length > 0
+
+- name: Install WAL-G backup service unit
+  ansible.builtin.template:
+    src: wal-g-backup.service.j2
+    dest: "/etc/systemd/system/{{ wal_g_backup_service_name }}.service"
+    owner: "{{ wal_g_owner }}"
+    group: "{{ wal_g_group }}"
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart wal-g backup timer
+
+- name: Install WAL-G backup timer unit
+  ansible.builtin.template:
+    src: wal-g-backup.timer.j2
+    dest: "/etc/systemd/system/{{ wal_g_backup_service_name }}.timer"
+    owner: "{{ wal_g_owner }}"
+    group: "{{ wal_g_group }}"
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart wal-g backup timer
+  when: wal_g_enable_full_backup_timer | bool
+
+- name: Enable WAL-G backup timer
+  ansible.builtin.systemd_service:
+    name: "{{ wal_g_backup_service_name }}.timer"
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: wal_g_enable_full_backup_timer | bool
+
+- name: Disable WAL-G backup timer
+  ansible.builtin.systemd_service:
+    name: "{{ wal_g_backup_service_name }}.timer"
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  when: not wal_g_enable_full_backup_timer | bool

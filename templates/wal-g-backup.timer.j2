@@ -1,0 +1,10 @@
+[Unit]
+Description=Run WAL-G PostgreSQL full backup
+
+[Timer]
+OnCalendar={{ wal_g_full_backup_schedule }}
+RandomizedDelaySec={{ wal_g_full_backup_randomized_delay_sec }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

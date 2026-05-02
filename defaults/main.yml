@@ -1,0 +1,45 @@
+---
+# WAL-G release to install. Override with a pinned version used by your fleet.
+wal_g_version: "v3.0.8"
+wal_g_arch: "amd64"
+wal_g_binary_name: "wal-g-pg-20.04-{{ wal_g_arch }}"
+wal_g_download_url: "https://github.com/wal-g/wal-g/releases/download/{{ wal_g_version }}/{{ wal_g_binary_name }}"
+wal_g_install_dir: /usr/local/bin
+wal_g_binary_path: /usr/local/bin/wal-g
+wal_g_owner: root
+wal_g_group: root
+wal_g_config_dir: /etc/wal-g
+wal_g_config_path: "{{ wal_g_config_dir }}/config.json"
+wal_g_log_dir: /var/log/postgresql
+wal_g_archive_log_path: "{{ wal_g_log_dir }}/wal-g-archive.log"
+wal_g_restore_log_path: "{{ wal_g_log_dir }}/wal-g-restore.log"
+wal_g_backup_log_path: "{{ wal_g_log_dir }}/wal-g-backup.log"
+
+# PostgreSQL integration.
+wal_g_postgres_user: postgres
+wal_g_postgres_group: postgres
+wal_g_pgdata: /var/lib/postgresql/data
+wal_g_configure_postgresql_archive: true
+wal_g_postgresql_conf_path: "{{ wal_g_pgdata }}/postgresql.conf"
+wal_g_archive_mode: "on"
+wal_g_archive_command: "{{ wal_g_binary_path }} --config {{ wal_g_config_path }} wal-push \"%p\" >> {{ wal_g_archive_log_path }} 2>&1"
+wal_g_restore_command: "{{ wal_g_binary_path }} --config {{ wal_g_config_path }} wal-fetch \"%f\" \"%p\" >> {{ wal_g_restore_log_path }} 2>&1"
+wal_g_postgresql_service_name: postgresql
+wal_g_postgresql_parameters: {}
+wal_g_config: {}
+
+# Backup scheduling.
+wal_g_enable_full_backup_timer: true
+wal_g_full_backup_schedule: "*-*-* 02:00:00"
+wal_g_full_backup_randomized_delay_sec: 900
+wal_g_backup_service_name: wal-g-backup
+wal_g_backup_command: "{{ wal_g_binary_path }} --config {{ wal_g_config_path }} backup-push {{ wal_g_pgdata }}"
+wal_g_backup_user: "{{ wal_g_postgres_user }}"
+wal_g_backup_group: "{{ wal_g_postgres_group }}"
+
+# Retention is intentionally disabled by default. Enable only after choosing policy.
+wal_g_enable_retention: false
+wal_g_retention_full_backups: 7
+wal_g_retention_command: "{{ wal_g_binary_path }} --config {{ wal_g_config_path }} delete retain FULL {{ wal_g_retention_full_backups }} --confirm"
+
+wal_g_packages: []
