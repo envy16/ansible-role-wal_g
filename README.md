@@ -5,7 +5,7 @@ Installs WAL-G for PostgreSQL, writes a JSON config, configures WAL archiving, a
 ## Installation
 
 ```bash
-ansible-galaxy install envy16.wal_g
+ansible-galaxy install envy16.wal_g_postgresql
 ```
 
 ## Example
@@ -16,7 +16,7 @@ Install from the default public GitHub release URL:
 - hosts: postgres
   become: true
   roles:
-    - role: envy16.wal_g
+    - role: envy16.wal_g_postgresql
       vars:
         wal_g_config:
           WALG_S3_PREFIX: s3://my-backups/prod/postgres
@@ -35,7 +35,7 @@ Install from another URL, including a private source with Basic Auth:
 - hosts: postgres
   become: true
   roles:
-    - role: envy16.wal_g
+    - role: envy16.wal_g_postgresql
       vars:
         wal_g_download_url: "https://downloads.example.com/wal-g/v3.0.8/wal-g"
         wal_g_download_username: "{{ vault_download_user }}"

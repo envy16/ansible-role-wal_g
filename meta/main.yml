@@ -1,6 +1,6 @@
 ---
 galaxy_info:
-  role_name: wal_g
+  role_name: wal_g_postgresql
   namespace: envy16
   author: envy16
   description: Install WAL-G for PostgreSQL and configure WAL archiving, backups, and retention with systemd.
